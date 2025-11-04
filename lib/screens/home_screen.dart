@@ -1,7 +1,9 @@
+// Importaciones necesarias para el funcionamiento del widget y conexión con la base de datos
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../models/tarea.dart';
 
+// Pantalla principal de la aplicación donde se gestionan las tareas
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
@@ -9,19 +11,26 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+// Estado asociado a la pantalla principal
 class _HomeScreenState extends State<HomeScreen> {
+  // Instancia del helper que maneja las operaciones con la base de datos
   final DatabaseHelper _databaseHelper = DatabaseHelper();
+
+  // Lista donde se almacenarán las tareas cargadas desde la base de datos
   List<Tarea> _tareas = [];
+
+  // Variables para manejar el estado de carga y posibles errores
   bool _cargando = true;
   String _error = '';
 
   @override
   void initState() {
     super.initState();
+    // Se ejecuta al iniciar la pantalla y carga las tareas guardadas
     _cargarTareas();
   }
 
-  // LEER (GET) - Obtener tareas al iniciar
+  // 🔹 LEER (GET) - Obtener tareas al iniciar la aplicación
   void _cargarTareas() async {
     setState(() {
       _cargando = true;
@@ -29,31 +38,37 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     
     try {
+      // Se obtienen las tareas desde la base de datos
       final tareas = await _databaseHelper.getTareas();
       setState(() {
         _tareas = tareas;
       });
     } catch (e) {
+      // Si ocurre un error de conexión o lectura, se guarda el mensaje
       setState(() {
         _error = 'Error de conexión: $e';
       });
     } finally {
+      // Se desactiva el estado de carga al finalizar la operación
       setState(() {
         _cargando = false;
       });
     }
   }
 
-  // CREAR (POST) - Agregar nueva tarea
+  // 🔹 CREAR (POST) - Agregar una nueva tarea a la base de datos
   void _crearTarea(String descripcion) async {
     setState(() {
       _error = '';
     });
 
     try {
+      // Crea una nueva tarea en la base de datos
       await _databaseHelper.createTarea(descripcion, false);
+      // Recarga la lista de tareas
       _cargarTareas();
       
+      // Mensaje de confirmación visual
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Tarea creada exitosamente'),
@@ -62,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } catch (e) {
+      // En caso de error, muestra un mensaje rojo
       setState(() {
         _error = 'Error al crear tarea: $e';
       });
@@ -74,13 +90,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ACTUALIZAR (PUT) - Cambiar estado completado/pendiente
+  // 🔹 ACTUALIZAR (PUT) - Cambia el estado de una tarea (completada o pendiente)
   void _alternarEstadoTarea(Tarea tarea) async {
     try {
+      // Crea una copia de la tarea actual con el estado invertido
       final tareaActualizada = tarea.copyWith(completed: !tarea.completed);
       await _databaseHelper.updateTarea(tareaActualizada);
       _cargarTareas();
       
+      // Notificación de actualización
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Tarea ${tareaActualizada.completed ? 'completada' : 'marcada como pendiente'}'),
@@ -88,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } catch (e) {
+      // En caso de error, muestra un mensaje y recarga las tareas
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al actualizar tarea: $e'),
@@ -98,18 +117,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ELIMINAR (DELETE) - Borrar tarea con confirmación
+  // 🔹 ELIMINAR (DELETE) - Elimina una tarea después de confirmar con el usuario
   void _eliminarTarea(Tarea tarea) async {
+    // Muestra un diálogo de confirmación antes de eliminar
     final confirmar = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Confirmar eliminación'),
         content: Text('¿Estás seguro de eliminar la tarea "${tarea.todo}"?'),
         actions: [
+          // Botón para cancelar la eliminación
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: Text('Cancelar'),
           ),
+          // Botón para confirmar la eliminación
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -119,12 +141,15 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
+    // Si el usuario confirma la eliminación
     if (confirmar == true) {
       try {
+        // Se elimina la tarea de la base de datos
         final success = await _databaseHelper.deleteTarea(tarea.id);
         if (success) {
           _cargarTareas();
           
+          // Muestra mensaje de éxito
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Tarea eliminada exitosamente'),
@@ -133,6 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
       } catch (e) {
+        // Muestra mensaje de error si la operación falla
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error al eliminar tarea: $e'),
@@ -144,6 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // 🔹 Muestra un cuadro de diálogo para escribir y crear una nueva tarea
   void _mostrarDialogoCrearTarea() {
     final TextEditingController controller = TextEditingController();
     
@@ -160,6 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text('Descripción de la tarea'),
               SizedBox(height: 10),
+              // Campo de texto para escribir la descripción
               TextField(
                 controller: controller,
                 decoration: InputDecoration(
@@ -174,10 +202,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           actions: [
+            // Botón para cancelar la creación
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text('Cancelar'),
             ),
+            // Botón para confirmar y crear la tarea
             ElevatedButton(
               onPressed: () {
                 final descripcion = controller.text.trim();
@@ -199,12 +229,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Estructura visual principal de la pantalla
     return Scaffold(
       appBar: AppBar(
         title: Text('Administrador de Tareas'),
         backgroundColor: Color(0xFF6A0DAD),
         foregroundColor: Colors.white,
         actions: [
+          // Botón para recargar manualmente las tareas
           IconButton(
             icon: Icon(Icons.refresh),
             onPressed: _cargarTareas,
@@ -212,7 +244,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      // Cuerpo de la pantalla que cambia según el estado de la app
       body: _cargando
+          // Muestra un indicador de carga mientras se obtienen los datos
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -223,6 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             )
+          // Si hay error, muestra un mensaje de error con opción a reintentar
           : _error.isNotEmpty
               ? Center(
                   child: Column(
@@ -254,6 +289,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 )
+              // Si no hay tareas registradas, muestra un mensaje amigable
               : _tareas.isEmpty
                   ? Center(
                       child: Column(
@@ -277,6 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     )
+                  // Si hay tareas, las lista en tarjetas individuales
                   : ListView.builder(
                       itemCount: _tareas.length,
                       itemBuilder: (context, index) {
@@ -307,6 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       },
                     ),
+      // Botón flotante para crear nuevas tareas
       floatingActionButton: FloatingActionButton(
         onPressed: _mostrarDialogoCrearTarea,
         backgroundColor: Color(0xFF6A0DAD),
